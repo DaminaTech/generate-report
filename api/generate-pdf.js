@@ -93,6 +93,34 @@ export default async function handler(req, res) {
             format: "a4",
         });
 
+        // Alternative approach with actual image loading
+        try {
+            const fs = await import("fs");
+            const path = await import("path");
+
+            // Read logo file
+            const logoPath = path.join(
+                process.cwd(),
+                "public",
+                "damina-logo.png"
+            );
+            const logoBuffer = fs.readFileSync(logoPath);
+            const logoBase64 = logoBuffer.toString("base64");
+
+            // Add logo to PDF
+            doc.addImage(
+                `data:image/png;base64,${logoBase64}`,
+                "PNG",
+                20,
+                10,
+                50,
+                20
+            );
+        } catch (error) {
+            console.log("Could not load logo, using styled placeholder");
+            // Use the styled placeholder from above
+        }
+
         // Set initial position
         let yPosition = 30;
 
@@ -101,25 +129,25 @@ export default async function handler(req, res) {
         doc.setLineWidth(0.5);
         doc.line(20, 20, 190, 20);
 
-        // Title section
-        doc.setFontSize(14);
+        // Title section with blue styling like screenshot
+        doc.setFontSize(16);
         doc.setFont("helvetica", "bold");
+        doc.setTextColor(70, 130, 180); // Blue color
 
         let titleText = "";
         let subtitleText = "";
 
         if (reportData.templateType === "Administrativ") {
             titleText =
-                "FISA DE LUCRU nr............ din " +
+                "FIȘA DE LUCRU nr............ din " +
                 (reportData.formattedDate || "");
             subtitleText = "Lucrari de MENTENANTA";
         } else if (reportData.templateType === "Caseta") {
-            titleText = "FISA DE LUCRU MENTENANTA CASETA";
+            titleText = "FIȘA DE LUCRU MENTENANTA CASETA";
             subtitleText = "din " + (reportData.formattedDate || "");
         } else {
-            titleText = "FISA DE LUCRU PENTRU CONSTRUCTII INDUSTRIALE";
-            subtitleText =
-                "Nr .......... din " + (reportData.formattedDate || "");
+            titleText = "FIȘA DE LUCRU PENTRU CONSTRUCTII INDUSTRIALE";
+            subtitleText = "Nr ..... din " + (reportData.formattedDate || "");
         }
 
         // Center the title
@@ -128,15 +156,17 @@ export default async function handler(req, res) {
         const titleX = (pageWidth - titleWidth) / 2;
 
         doc.text(titleText, titleX, yPosition);
-        yPosition += 8;
+        yPosition += 10;
 
         // Subtitle
-        doc.setFontSize(12);
-        doc.setFont("helvetica", "italic");
+        doc.setFontSize(14);
+        doc.setFont("helvetica", "normal");
         const subtitleWidth = doc.getTextWidth(subtitleText);
         const subtitleX = (pageWidth - subtitleWidth) / 2;
         doc.text(subtitleText, subtitleX, yPosition);
 
+        // Reset color for content
+        doc.setTextColor(0, 0, 0);
         yPosition += 20;
 
         // Content fields
@@ -278,19 +308,20 @@ export default async function handler(req, res) {
         yPosition += 20;
 
         // Contract footer based on type
-        doc.setFontSize(9);
-        doc.setFont("helvetica", "italic");
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(70, 130, 180); // Blue color like header
 
         let footerText = "";
         if (reportData.templateType === "Administrativ") {
             footerText =
-                "Contract de mentenanta - Lucrari administrative • Tel: 021.XXX.XXXX • Email: admin@company.ro";
+                "Contract de mentenanta - Lucrari administrative | E-mail: mentenanta@damina.ro | Tel: 0743.200.391";
         } else if (reportData.templateType === "Industrial") {
             footerText =
-                "Contract constructii industriale • Tel: 021.XXX.XXXX • Email: industrial@company.ro";
+                "Contract constructii industriale | E-mail: mentenanta@damina.ro | Tel: 0743.200.391";
         } else {
             footerText =
-                "Contract mentenanta caseta • Tel: 021.XXX.XXXX • Email: caseta@company.ro";
+                "Contract mentenanta caseta | E-mail: mentenanta@damina.ro | Tel: 0743.200.391";
         }
 
         const footerWidth = doc.getTextWidth(footerText);
