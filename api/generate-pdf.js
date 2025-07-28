@@ -130,16 +130,55 @@ export default async function handler(req, res) {
         } catch (puppeteerError) {
             console.error("❌ Puppeteer error:", puppeteerError);
 
-            // Fallback: Return HTML as downloadable file
-            console.log("📄 Falling back to HTML file");
+            // Fallback: Create a simple PDF-style HTML that can be saved as PDF
+            console.log("📄 Creating PDF-ready HTML fallback");
 
-            res.setHeader("Content-Type", "text/html; charset=utf-8");
+            const pdfReadyHtml = `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        @page { 
+            size: A4; 
+            margin: 20mm 15mm; 
+        }
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 0; 
+            padding: 0;
+            line-height: 1.4;
+            font-size: 12px;
+        }
+        .print-ready {
+            width: 100%;
+            max-width: none;
+        }
+    </style>
+</head>
+<body class="print-ready">
+${html
+    .replace(/<body[^>]*>|<\/body>/gi, "")
+    .replace(/<html[^>]*>|<\/html>/gi, "")
+    .replace(/<head>.*?<\/head>/gis, "")}
+<script>
+// Auto-print when opened (optional)
+// window.onload = function() { window.print(); }
+</script>
+</body>
+</html>`;
+
+            // Return as downloadable HTML file
+            const htmlBuffer = Buffer.from(pdfReadyHtml, "utf8");
+
+            res.setHeader("Content-Type", "application/octet-stream");
+            res.setHeader("Content-Length", htmlBuffer.length);
             res.setHeader(
                 "Content-Disposition",
                 'attachment; filename="construction-report.html"'
             );
 
-            return res.status(200).send(html);
+            return res.status(200).send(htmlBuffer);
         }
     } catch (error) {
         console.error("❌ General error:", error);
