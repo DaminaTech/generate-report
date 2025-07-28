@@ -103,7 +103,7 @@ export default async function handler(req, res) {
         doc.setFont("helvetica", "bold");
         doc.setTextColor(70, 130, 180); // Blue color
         doc.text("DAMINA SOLUTIONS", 20, 15);
-        
+
         // Contact information in header
         doc.setFontSize(9);
         doc.setFont("helvetica", "normal");
@@ -120,46 +120,55 @@ export default async function handler(req, res) {
         doc.line(20, 28, pageWidth - 20, 28);
 
         // Title section with proper formatting
-        doc.setFontSize(14); // Back to readable size
+        doc.setFontSize(12);
         doc.setFont("helvetica", "bold");
         doc.setTextColor(70, 130, 180); // Blue color
 
-        let titleText = "";
-        let subtitleText = "";
+        let titleLines = [];
 
         if (reportData.templateType === "Administrativ") {
-            titleText = "FIȘA DE LUCRU";
-            subtitleText = "nr............ din " + (reportData.formattedDate || "") + " - Lucrări de MENTENANȚĂ";
+            titleLines = [
+                "FIȘA DE LUCRU nr............ din " +
+                    (reportData.formattedDate || ""),
+                "Lucrări de MENTENANȚĂ",
+            ];
         } else if (reportData.templateType === "Caseta") {
-            titleText = "FIȘA DE LUCRU MENTENANȚĂ CASETA";
-            subtitleText = "din " + (reportData.formattedDate || "");
+            titleLines = [
+                "FIȘA DE LUCRU MENTENANȚĂ CASETA",
+                "din " + (reportData.formattedDate || ""),
+            ];
         } else {
-            titleText = "FIȘA DE LUCRU";
-            subtitleText = "PENTRU CONSTRUCȚII INDUSTRIALE - Nr ..... din " + (reportData.formattedDate || "");
+            titleLines = [
+                "FIȘA DE LUCRU PENTRU CONSTRUCȚII INDUSTRIALE",
+                "Nr ..... din " + (reportData.formattedDate || ""),
+            ];
         }
 
-        // Center the main title
-        const titleWidth = doc.getTextWidth(titleText);
-        const titleX = (pageWidth - titleWidth) / 2;
-        doc.text(titleText, titleX, yPosition);
-        
-        yPosition += 8;
-        
-        // Subtitle with smaller font
-        doc.setFontSize(11);
-        doc.setFont("helvetica", "normal");
-        
-        // Handle subtitle wrapping if needed
-        const subtitleMaxWidth = pageWidth - 40; // 20mm margins
-        const subtitleLines = doc.splitTextToSize(subtitleText, subtitleMaxWidth);
-        
-        subtitleLines.forEach((line, index) => {
-            const lineWidth = doc.getTextWidth(line);
-            const lineX = (pageWidth - lineWidth) / 2;
-            doc.text(line, lineX, yPosition + index * 6);
+        // Draw each title line centered
+        titleLines.forEach((line, index) => {
+            // Check if line is too long and needs to be split
+            const maxLineWidth = pageWidth - 40; // 20mm margins
+            if (doc.getTextWidth(line) > maxLineWidth) {
+                // Split long lines
+                const splitLines = doc.splitTextToSize(line, maxLineWidth);
+                splitLines.forEach((splitLine, splitIndex) => {
+                    const lineWidth = doc.getTextWidth(splitLine);
+                    const lineX = (pageWidth - lineWidth) / 2;
+                    doc.text(
+                        splitLine,
+                        lineX,
+                        yPosition + index * 6 + splitIndex * 5
+                    );
+                });
+                yPosition += (splitLines.length - 1) * 5; // Adjust position for extra lines
+            } else {
+                const lineWidth = doc.getTextWidth(line);
+                const lineX = (pageWidth - lineWidth) / 2;
+                doc.text(line, lineX, yPosition + index * 6);
+            }
         });
 
-        yPosition += subtitleLines.length * 6 + 10;
+        yPosition += titleLines.length * 6 + 10;
 
         // Subtitle
         doc.setFontSize(12);
