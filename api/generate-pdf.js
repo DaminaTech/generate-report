@@ -119,57 +119,37 @@ export default async function handler(req, res) {
         doc.setLineWidth(1);
         doc.line(20, 28, pageWidth - 20, 28);
 
-        // Title section with proper formatting
-        doc.setFontSize(12);
+        // Simple title - just the main title, centered
+        doc.setFontSize(14);
         doc.setFont("helvetica", "bold");
-        doc.setTextColor(70, 130, 180); // Blue color
-
-        let titleLines = [];
-
+        doc.setTextColor(70, 130, 180);
+        
+        let mainTitle = "FIȘA DE LUCRU";
+        let titleWidth = doc.getTextWidth(mainTitle);
+        let titleX = (pageWidth - titleWidth) / 2;
+        doc.text(mainTitle, titleX, yPosition);
+        
+        yPosition += 8;
+        
+        // Subtitle with date and type info
+        doc.setFontSize(11);
+        doc.setFont("helvetica", "normal");
+        
+        let subtitle = "";
         if (reportData.templateType === "Administrativ") {
-            titleLines = [
-                "FIȘA DE LUCRU nr............ din " +
-                    (reportData.formattedDate || ""),
-                "Lucrări de MENTENANȚĂ",
-            ];
+            subtitle = "nr............ din " + (reportData.formattedDate || "") + " - Lucrări de MENTENANȚĂ";
         } else if (reportData.templateType === "Caseta") {
-            titleLines = [
-                "FIȘA DE LUCRU MENTENANȚĂ CASETA",
-                "din " + (reportData.formattedDate || ""),
-            ];
+            subtitle = "MENTENANȚĂ CASETA - din " + (reportData.formattedDate || "");
         } else {
-            titleLines = [
-                "FIȘA DE LUCRU PENTRU CONSTRUCȚII INDUSTRIALE",
-                "Nr ..... din " + (reportData.formattedDate || ""),
-            ];
+            subtitle = "CONSTRUCȚII INDUSTRIALE - Nr ..... din " + (reportData.formattedDate || "");
         }
-
-        // Draw each title line centered
-        titleLines.forEach((line, index) => {
-            // Check if line is too long and needs to be split
-            const maxLineWidth = pageWidth - 40; // 20mm margins
-            if (doc.getTextWidth(line) > maxLineWidth) {
-                // Split long lines
-                const splitLines = doc.splitTextToSize(line, maxLineWidth);
-                splitLines.forEach((splitLine, splitIndex) => {
-                    const lineWidth = doc.getTextWidth(splitLine);
-                    const lineX = (pageWidth - lineWidth) / 2;
-                    doc.text(
-                        splitLine,
-                        lineX,
-                        yPosition + index * 6 + splitIndex * 5
-                    );
-                });
-                yPosition += (splitLines.length - 1) * 5; // Adjust position for extra lines
-            } else {
-                const lineWidth = doc.getTextWidth(line);
-                const lineX = (pageWidth - lineWidth) / 2;
-                doc.text(line, lineX, yPosition + index * 6);
-            }
-        });
-
-        yPosition += titleLines.length * 6 + 10;
-
+        
+        let subtitleWidth = doc.getTextWidth(subtitle);
+        let subtitleX = (pageWidth - subtitleWidth) / 2;
+        doc.text(subtitle, subtitleX, yPosition);
+        
+        yPosition += 15;
+        
         // Reset color for content
         doc.setTextColor(0, 0, 0);
 
