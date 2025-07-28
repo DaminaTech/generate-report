@@ -1,5 +1,5 @@
 // api/generate-pdf.js
-// Simple PDF generation using jsPDF
+// Fixed PDF generation using jsPDF with proper syntax
 
 export default async function handler(req, res) {
     // CORS headers
@@ -26,133 +26,157 @@ export default async function handler(req, res) {
             requestData = JSON.parse(req.body);
         }
 
+        console.log("Request data:", requestData);
+
         const { data: reportData } = requestData;
 
         if (!reportData) {
             return res.status(400).json({ error: "Report data is required" });
         }
 
-        // Create PDF
-        const doc = new jsPDF("p", "mm", "a4");
+        console.log("Report data:", reportData);
 
-        // Set font
-        doc.setFont("times", "normal");
-        doc.setFontSize(12);
+        // Create PDF with proper settings
+        const doc = new jsPDF({
+            orientation: "portrait",
+            unit: "mm",
+            format: "a4",
+        });
 
-        // Add content
+        // Set initial position
         let yPosition = 30;
 
-        // Title
+        // Add top line
+        doc.setDrawColor(0, 0, 0);
+        doc.setLineWidth(0.5);
+        doc.line(20, 20, 190, 20);
+
+        // Title section
         doc.setFontSize(14);
-        doc.setFont("times", "bold");
+        doc.setFont("helvetica", "bold");
+
+        let titleText = "";
+        let subtitleText = "";
 
         if (reportData.templateType === "Administrativ") {
-            doc.text(
-                "FIȘA DE LUCRU nr............ din " + reportData.formattedDate,
-                105,
-                yPosition,
-                { align: "center" }
-            );
-            yPosition += 10;
-            doc.setFont("times", "italic");
-            doc.text("Lucrari de MENTENANTA", 105, yPosition, {
-                align: "center",
-            });
+            titleText =
+                "FISA DE LUCRU nr............ din " +
+                (reportData.formattedDate || "");
+            subtitleText = "Lucrari de MENTENANTA";
         } else if (reportData.templateType === "Caseta") {
-            doc.text("FIȘA DE LUCRU MENTENANTA CASETA", 105, yPosition, {
-                align: "center",
-            });
-            yPosition += 10;
-            doc.text("din " + reportData.formattedDate, 105, yPosition, {
-                align: "center",
-            });
+            titleText = "FISA DE LUCRU MENTENANTA CASETA";
+            subtitleText = "din " + (reportData.formattedDate || "");
         } else {
-            doc.text(
-                "FIȘA DE LUCRU PENTRU CONSTRUCTII INDUSTRIALE",
-                105,
-                yPosition,
-                { align: "center" }
-            );
-            yPosition += 10;
-            doc.text(
-                "Nr .......... din " + reportData.formattedDate,
-                105,
-                yPosition,
-                { align: "center" }
-            );
+            titleText = "FISA DE LUCRU PENTRU CONSTRUCTII INDUSTRIALE";
+            subtitleText =
+                "Nr .......... din " + (reportData.formattedDate || "");
         }
+
+        // Center the title
+        const pageWidth = doc.internal.pageSize.getWidth();
+        const titleWidth = doc.getTextWidth(titleText);
+        const titleX = (pageWidth - titleWidth) / 2;
+
+        doc.text(titleText, titleX, yPosition);
+        yPosition += 8;
+
+        // Subtitle
+        doc.setFontSize(12);
+        doc.setFont("helvetica", "italic");
+        const subtitleWidth = doc.getTextWidth(subtitleText);
+        const subtitleX = (pageWidth - subtitleWidth) / 2;
+        doc.text(subtitleText, subtitleX, yPosition);
 
         yPosition += 20;
 
-        // Fields
-        doc.setFontSize(12);
-        doc.setFont("times", "bold");
-        doc.text("Locația (Aria): ", 20, yPosition);
-        doc.setFont("times", "normal");
-        doc.text(reportData.locatieCompleta, 60, yPosition);
-        yPosition += 10;
+        // Content fields
+        doc.setFontSize(11);
+        doc.setFont("helvetica", "normal");
 
+        // Location
+        doc.setFont("helvetica", "bold");
+        doc.text("Locatia (Aria):", 20, yPosition);
+        doc.setFont("helvetica", "normal");
+        doc.text(reportData.locatieCompleta || "", 55, yPosition);
+        yPosition += 8;
+
+        // Activity type (if not Administrativ)
         if (reportData.templateType !== "Administrativ") {
-            doc.setFont("times", "bold");
-            doc.text("Tip activitate: ", 20, yPosition);
-            doc.setFont("times", "normal");
-            doc.text(reportData.tipActivitateRoman, 60, yPosition);
-            yPosition += 10;
+            doc.setFont("helvetica", "bold");
+            doc.text("Tip activitate:", 20, yPosition);
+            doc.setFont("helvetica", "normal");
+            doc.text(reportData.tipActivitateRoman || "", 55, yPosition);
+            yPosition += 8;
         }
 
-        doc.setFont("times", "bold");
-        doc.text("Denumire lucrare: ", 20, yPosition);
-        doc.setFont("times", "normal");
-        doc.text(reportData.numelucrare, 60, yPosition);
-        yPosition += 15;
+        // Work name
+        doc.setFont("helvetica", "bold");
+        doc.text("Denumire lucrare:", 20, yPosition);
+        doc.setFont("helvetica", "normal");
+        doc.text(reportData.numelucrare || "", 60, yPosition);
+        yPosition += 12;
 
         // Description
-        doc.setFont("times", "bold");
+        doc.setFont("helvetica", "bold");
         doc.text("Descriere activitate:", 20, yPosition);
+        yPosition += 8;
+
+        doc.setFont("helvetica", "normal");
+        const maxWidth = 170;
+        const description = reportData.descriereActivitate || "";
+
+        // Split text properly
+        const lines = doc.splitTextToSize(description, maxWidth);
+
+        for (let i = 0; i < lines.length; i++) {
+            doc.text(lines[i], 20, yPosition);
+            yPosition += 5;
+        }
+
         yPosition += 10;
 
-        doc.setFont("times", "normal");
-        const splitDescription = doc.splitTextToSize(
-            reportData.descriereActivitate,
-            170
-        );
-        doc.text(splitDescription, 20, yPosition);
-        yPosition += splitDescription.length * 5 + 15;
-
         // Completion status
-        doc.setFont("times", "bold");
+        doc.setFont("helvetica", "bold");
         doc.text("Lucrare finalizata: DA NU", 20, yPosition);
         yPosition += 20;
 
-        // Signatures
+        // Signatures section
+        doc.setFont("helvetica", "bold");
+
         if (reportData.templateType === "Administrativ") {
-            // 3 columns
+            // Three columns
             doc.text("Executant:", 20, yPosition);
             doc.text("Beneficiar Glina:", 80, yPosition);
             doc.text("Derulator contract:", 140, yPosition);
 
             yPosition += 10;
-            doc.setFont("times", "normal");
+            doc.setFont("helvetica", "normal");
+
+            // Names
             doc.text("Nume: _______________", 20, yPosition);
             doc.text("Nume: _______________", 80, yPosition);
             doc.text("Nume: _______________", 140, yPosition);
+            yPosition += 7;
 
-            yPosition += 8;
+            // First names
             doc.text("Prenume: ____________", 20, yPosition);
             doc.text("Prenume: ____________", 80, yPosition);
             doc.text("Prenume: ____________", 140, yPosition);
+            yPosition += 7;
 
-            yPosition += 8;
+            // Signatures
             doc.text("Semnatura: __________", 20, yPosition);
             doc.text("Semnatura: __________", 80, yPosition);
             doc.text("Semnatura: __________", 140, yPosition);
+            yPosition += 7;
 
-            yPosition += 8;
-            doc.text("Data: " + reportData.formattedDate, 20, yPosition);
-            doc.text("Data: " + reportData.formattedDate, 80, yPosition);
-            doc.text("Data: " + reportData.formattedDate, 140, yPosition);
+            // Dates
+            const dateText = "Data: " + (reportData.formattedDate || "");
+            doc.text(dateText, 20, yPosition);
+            doc.text(dateText, 80, yPosition);
+            doc.text(dateText, 140, yPosition);
         } else {
-            // 2 columns
+            // Two columns
             const leftTitle =
                 reportData.templateType === "Industrial"
                     ? "Executant:"
@@ -162,28 +186,33 @@ export default async function handler(req, res) {
                     ? "Reprezentant ANB:"
                     : "Nume:";
 
-            doc.setFont("times", "bold");
             doc.text(leftTitle, 30, yPosition);
             doc.text(rightTitle, 130, yPosition);
 
             yPosition += 10;
-            doc.setFont("times", "normal");
+            doc.setFont("helvetica", "normal");
+
+            // Names
             doc.text("Nume: _______________", 30, yPosition);
             doc.text("Nume: _______________", 130, yPosition);
+            yPosition += 7;
 
-            yPosition += 8;
+            // Signatures
             doc.text("Semnatura: __________", 30, yPosition);
             doc.text("Semnatura: __________", 130, yPosition);
+            yPosition += 7;
 
-            yPosition += 8;
-            doc.text("Data: " + reportData.formattedDate, 30, yPosition);
-            doc.text("Data: " + reportData.formattedDate, 130, yPosition);
+            // Dates
+            const dateText = "Data: " + (reportData.formattedDate || "");
+            doc.text(dateText, 30, yPosition);
+            doc.text(dateText, 130, yPosition);
         }
 
         // Generate PDF buffer
-        const pdfBuffer = Buffer.from(doc.output("arraybuffer"));
+        const pdfArrayBuffer = doc.output("arraybuffer");
+        const pdfBuffer = Buffer.from(pdfArrayBuffer);
 
-        console.log("✅ PDF generated, size:", pdfBuffer.length);
+        console.log("✅ PDF generated successfully, size:", pdfBuffer.length);
 
         // Return PDF
         res.setHeader("Content-Type", "application/pdf");
@@ -196,9 +225,11 @@ export default async function handler(req, res) {
         return res.status(200).send(pdfBuffer);
     } catch (error) {
         console.error("❌ PDF generation failed:", error);
+        console.error("Error stack:", error.stack);
         return res.status(500).json({
             error: "PDF generation failed",
             message: error.message,
+            stack: error.stack,
         });
     }
 }
