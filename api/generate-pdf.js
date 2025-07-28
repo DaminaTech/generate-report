@@ -131,7 +131,7 @@ export default async function handler(req, res) {
         doc.line(20, 20, 190, 20);
 
         // Title section with blue styling and proper formatting
-        doc.setFontSize(14);
+        doc.setFontSize(10); // Further reduced font size to 10
         doc.setFont("helvetica", "bold");
         doc.setTextColor(70, 130, 180); // Blue color
 
@@ -154,9 +154,28 @@ export default async function handler(req, res) {
         // Center the title with proper width calculation
         const pageWidth = doc.internal.pageSize.getWidth();
 
-        // Split long titles into multiple lines if needed
-        const maxWidth = 150; // Maximum width for title to prevent overflow
+        // Use a more conservative width to account for character spacing
+        const maxWidth = pageWidth - 60; // Increased margins to 30mm each side
         let titleLines = doc.splitTextToSize(titleText, maxWidth);
+
+        // If still too long, force break manually
+        if (titleLines.length === 1 && doc.getTextWidth(titleLines[0]) > maxWidth) {
+            // Manual word wrap for very long titles
+            const words = titleText.split(' ');
+            titleLines = [];
+            let currentLine = '';
+            
+            for (let word of words) {
+                const testLine = currentLine ? currentLine + ' ' + word : word;
+                if (doc.getTextWidth(testLine) <= maxWidth) {
+                    currentLine = testLine;
+                } else {
+                    if (currentLine) titleLines.push(currentLine);
+                    currentLine = word;
+                }
+            }
+            if (currentLine) titleLines.push(currentLine);
+        }
 
         // Draw each line of the title centered
         titleLines.forEach((line, index) => {
