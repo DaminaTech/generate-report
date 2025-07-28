@@ -93,6 +93,10 @@ export default async function handler(req, res) {
             format: "a4",
         });
 
+        // Get page dimensions
+        const pageWidth = doc.internal.pageSize.getWidth();
+        const pageHeight = doc.internal.pageSize.getHeight();
+
         // Modern header design without rectangle
         // Company name in header
         doc.setFontSize(16);
@@ -325,7 +329,6 @@ export default async function handler(req, res) {
         }
 
         // Add footer with contract information (without contact details)
-        const pageHeight = doc.internal.pageSize.getHeight();
         const footerY = pageHeight - 20; // Position footer 20mm from bottom
 
         // Contract footer based on type (simplified)
