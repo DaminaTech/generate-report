@@ -155,24 +155,17 @@ export default async function handler(req, res) {
         const pageWidth = doc.internal.pageSize.getWidth();
 
         // Split long titles into multiple lines if needed
-        const maxWidth = 150; // Maximum width for title
-        let titleLines = [];
-
-        if (doc.getTextWidth(titleText) > maxWidth) {
-            // Split title into multiple lines
-            titleLines = doc.splitTextToSize(titleText, maxWidth);
-        } else {
-            titleLines = [titleText];
-        }
+        const maxWidth = 150; // Maximum width for title to prevent overflow
+        let titleLines = doc.splitTextToSize(titleText, maxWidth);
 
         // Draw each line of the title centered
         titleLines.forEach((line, index) => {
             const lineWidth = doc.getTextWidth(line);
             const lineX = (pageWidth - lineWidth) / 2;
-            doc.text(line, lineX, yPosition + index * 8);
+            doc.text(line, lineX, yPosition + index * 5); // Tighter line spacing
         });
 
-        yPosition += titleLines.length * 8 + 5;
+        yPosition += titleLines.length * 5 + 8;
 
         // Subtitle
         doc.setFontSize(12);
@@ -342,10 +335,11 @@ export default async function handler(req, res) {
         }
 
         // Add footer with contract information (without contact details)
-        yPosition += 20;
+        const pageHeight = doc.internal.pageSize.getHeight();
+        const footerY = pageHeight - 20; // Position footer 20mm from bottom
 
         // Contract footer based on type (simplified)
-        doc.setFontSize(10);
+        doc.setFontSize(9);
         doc.setFont("helvetica", "italic");
         doc.setTextColor(70, 130, 180); // Blue color like header
 
@@ -358,9 +352,16 @@ export default async function handler(req, res) {
             footerText = "Contract mentenanță caseta";
         }
 
-        const footerWidth = doc.getTextWidth(footerText);
-        const footerX = (pageWidth - footerWidth) / 2;
-        doc.text(footerText, footerX, yPosition);
+        // Ensure footer text fits within page margins
+        const footerMaxWidth = pageWidth - 40; // 20mm margin on each side
+        const footerLines = doc.splitTextToSize(footerText, footerMaxWidth);
+        
+        // Center each line of footer
+        footerLines.forEach((line, index) => {
+            const lineWidth = doc.getTextWidth(line);
+            const lineX = (pageWidth - lineWidth) / 2;
+            doc.text(line, lineX, footerY - (footerLines.length - 1 - index) * 4);
+        });
 
         // Generate PDF buffer
         const pdfArrayBuffer = doc.output("arraybuffer");
