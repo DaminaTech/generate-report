@@ -19,16 +19,66 @@ export default async function handler(req, res) {
         const { jsPDF } = await import("jspdf");
 
         console.log("📄 Creating PDF with jsPDF");
+        console.log("📨 Raw request body:", req.body);
+        console.log("📨 Request body type:", typeof req.body);
+        console.log("📨 Request headers:", req.headers);
 
-        // Parse request
-        let requestData = req.body;
-        if (typeof req.body === "string") {
-            requestData = JSON.parse(req.body);
+        // Parse request - handle multiple formats
+        let requestData = {};
+
+        if (req.body) {
+            if (typeof req.body === "string") {
+                try {
+                    requestData = JSON.parse(req.body);
+                    console.log("✅ Parsed string body as JSON");
+                } catch (e) {
+                    console.error("❌ Failed to parse string body as JSON:", e);
+                    // Try to extract data from form-data or other formats
+                    if (req.body.includes("data=")) {
+                        const dataMatch = req.body.match(/data=([^&]+)/);
+                        if (dataMatch) {
+                            try {
+                                requestData = JSON.parse(
+                                    decodeURIComponent(dataMatch[1])
+                                );
+                                console.log(
+                                    "✅ Extracted data from form format"
+                                );
+                            } catch (e2) {
+                                console.error(
+                                    "❌ Failed to parse form data:",
+                                    e2
+                                );
+                            }
+                        }
+                    }
+                }
+            } else if (typeof req.body === "object") {
+                requestData = req.body;
+                console.log("✅ Using object body directly");
+            }
         }
 
-        console.log("Request data:", requestData);
+        console.log("📋 Final request data:", requestData);
 
-        const { data: reportData } = requestData;
+        // Handle different data structures
+        let reportData;
+        if (requestData.data) {
+            reportData = requestData.data;
+        } else if (requestData.templateType) {
+            reportData = requestData;
+        } else {
+            console.error("❌ No valid data structure found");
+            return res.status(400).json({
+                error: "Invalid request format",
+                received: requestData,
+                expectedFormat: {
+                    data: { templateType: "...", formattedDate: "..." },
+                },
+            });
+        }
+
+        console.log("📄 Report data to use:", reportData);
 
         if (!reportData) {
             return res.status(400).json({ error: "Report data is required" });
@@ -135,16 +185,23 @@ export default async function handler(req, res) {
 
         yPosition += 10;
 
-        // Completion status
-        doc.setFont("helvetica", "bold");
-        doc.text("Lucrare finalizata: DA NU", 20, yPosition);
-        yPosition += 20;
+        // Completion status - only show if data is present (for interventions)
+        if (
+            reportData.lucrareFinalizata ||
+            reportData.tipActivitateRoman === "Corectiv"
+        ) {
+            doc.setFont("helvetica", "bold");
+            doc.text("Lucrare finalizata: DA NU", 20, yPosition);
+            yPosition += 20;
+        } else {
+            yPosition += 10; // Just add some space if not showing
+        }
 
-        // Signatures section
+        // Signatures section with pre-filled names
         doc.setFont("helvetica", "bold");
 
         if (reportData.templateType === "Administrativ") {
-            // Three columns
+            // Three columns with pre-filled names
             doc.text("Executant:", 20, yPosition);
             doc.text("Beneficiar Glina:", 80, yPosition);
             doc.text("Derulator contract:", 140, yPosition);
@@ -152,16 +209,16 @@ export default async function handler(req, res) {
             yPosition += 10;
             doc.setFont("helvetica", "normal");
 
-            // Names
-            doc.text("Nume: _______________", 20, yPosition);
-            doc.text("Nume: _______________", 80, yPosition);
-            doc.text("Nume: _______________", 140, yPosition);
+            // Pre-filled names from template
+            doc.text("Nume: Balan", 20, yPosition);
+            doc.text("Nume: Ciometti", 80, yPosition);
+            doc.text("Nume: Cirstea", 140, yPosition);
             yPosition += 7;
 
-            // First names
-            doc.text("Prenume: ____________", 20, yPosition);
-            doc.text("Prenume: ____________", 80, yPosition);
-            doc.text("Prenume: ____________", 140, yPosition);
+            // Pre-filled first names
+            doc.text("Prenume: Gabriel", 20, yPosition);
+            doc.text("Prenume: Anton", 80, yPosition);
+            doc.text("Prenume: Ciprian", 140, yPosition);
             yPosition += 7;
 
             // Signatures
@@ -175,26 +232,17 @@ export default async function handler(req, res) {
             doc.text(dateText, 20, yPosition);
             doc.text(dateText, 80, yPosition);
             doc.text(dateText, 140, yPosition);
-        } else {
-            // Two columns
-            const leftTitle =
-                reportData.templateType === "Industrial"
-                    ? "Executant:"
-                    : "Nume:";
-            const rightTitle =
-                reportData.templateType === "Industrial"
-                    ? "Reprezentant ANB:"
-                    : "Nume:";
-
-            doc.text(leftTitle, 30, yPosition);
-            doc.text(rightTitle, 130, yPosition);
+        } else if (reportData.templateType === "Industrial") {
+            // Two columns with pre-filled names
+            doc.text("Executant:", 30, yPosition);
+            doc.text("Reprezentant ANB:", 130, yPosition);
 
             yPosition += 10;
             doc.setFont("helvetica", "normal");
 
-            // Names
-            doc.text("Nume: _______________", 30, yPosition);
-            doc.text("Nume: _______________", 130, yPosition);
+            // Pre-filled names from template
+            doc.text("Nume: Gabriel Balan", 30, yPosition);
+            doc.text("Nume: Ciometti Anton", 130, yPosition);
             yPosition += 7;
 
             // Signatures
@@ -206,7 +254,48 @@ export default async function handler(req, res) {
             const dateText = "Data: " + (reportData.formattedDate || "");
             doc.text(dateText, 30, yPosition);
             doc.text(dateText, 130, yPosition);
+        } else {
+            // Caseta
+            // Two columns with pre-filled names
+            doc.text("Nume: Nitu Dragos", 30, yPosition);
+            doc.text("Nume: Chiriacescu Mihai", 130, yPosition);
+
+            yPosition += 10;
+            doc.setFont("helvetica", "normal");
+
+            // Signatures
+            doc.text("Semnatura: __________", 30, yPosition);
+            doc.text("Semnatura: __________", 130, yPosition);
+            yPosition += 7;
+
+            // Dates
+            const dateText = "Data: " + (reportData.formattedDate || "");
+            doc.text(dateText, 30, yPosition);
+            doc.text(dateText, 130, yPosition);
         }
+
+        // Add footer with contract information
+        yPosition += 20;
+
+        // Contract footer based on type
+        doc.setFontSize(9);
+        doc.setFont("helvetica", "italic");
+
+        let footerText = "";
+        if (reportData.templateType === "Administrativ") {
+            footerText =
+                "Contract de mentenanta - Lucrari administrative • Tel: 021.XXX.XXXX • Email: admin@company.ro";
+        } else if (reportData.templateType === "Industrial") {
+            footerText =
+                "Contract constructii industriale • Tel: 021.XXX.XXXX • Email: industrial@company.ro";
+        } else {
+            footerText =
+                "Contract mentenanta caseta • Tel: 021.XXX.XXXX • Email: caseta@company.ro";
+        }
+
+        const footerWidth = doc.getTextWidth(footerText);
+        const footerX = (pageWidth - footerWidth) / 2;
+        doc.text(footerText, footerX, yPosition);
 
         // Generate PDF buffer
         const pdfArrayBuffer = doc.output("arraybuffer");
