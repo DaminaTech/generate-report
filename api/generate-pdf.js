@@ -189,11 +189,11 @@ export default async function handler(req, res) {
         yPosition += 8;
 
         doc.setFont("helvetica", "normal");
-        maxWidth = 170;
+        const descriptionMaxWidth = 170; // Renamed to avoid duplicate with titleMaxWidth
         const description = reportData.descriereActivitate || "";
 
         // Split text properly
-        const lines = doc.splitTextToSize(description, maxWidth);
+        const lines = doc.splitTextToSize(description, descriptionMaxWidth);
 
         for (let i = 0; i < lines.length; i++) {
             doc.text(lines[i], 20, yPosition);
