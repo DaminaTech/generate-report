@@ -170,16 +170,8 @@ export default async function handler(req, res) {
 
         yPosition += titleLines.length * 6 + 10;
 
-        // Subtitle
-        doc.setFontSize(12);
-        doc.setFont("helvetica", "normal");
-        const subtitleWidth = doc.getTextWidth(subtitleText);
-        const subtitleX = (pageWidth - subtitleWidth) / 2;
-        doc.text(subtitleText, subtitleX, yPosition);
-
         // Reset color for content
         doc.setTextColor(0, 0, 0);
-        yPosition += 15;
 
         // Content fields
         doc.setFontSize(11);
