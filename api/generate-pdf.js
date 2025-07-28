@@ -93,63 +93,68 @@ export default async function handler(req, res) {
             format: "a4",
         });
 
-        // Header section with logo and contact info
-        let yPosition = 15;
+        // Set initial position
+        let yPosition = 30;
 
-        try {
-            const fs = await import("fs");
-            const path = await import("path");
+        // Add top line
+        doc.setDrawColor(0, 0, 0);
+        doc.setLineWidth(0.5);
+        doc.line(20, 20, 190, 20);
 
-            // Try to load actual logo
-            const logoPath = path.join(
-                process.cwd(),
-                "public",
-                "LOGO-damina.jpg"
-            );
-            const logoBuffer = fs.readFileSync(logoPath);
-            const logoBase64 = logoBuffer.toString("base64");
-
-            // Add logo to PDF
-            doc.addImage(
-                `data:image/png;base64,${logoBase64}`,
-                "PNG",
-                20,
-                8,
-                40,
-                15
-            );
-        } catch (error) {
-            console.log("Could not load logo, using styled placeholder");
-            // Professional styled placeholder
-            doc.setFillColor(70, 130, 180);
-            doc.rect(20, 8, 40, 15, "F");
-            doc.setFontSize(9);
-            doc.setFont("helvetica", "bold");
-            doc.setTextColor(255, 255, 255);
-            doc.text("DAMINA", 23, 14);
-            doc.text("SOLUTIONS", 23, 19);
-        }
-
-        // Contact information in header (right side)
-        doc.setFontSize(11);
-        doc.setFont("helvetica", "normal");
+        // Title section with blue styling and proper formatting
+        doc.setFontSize(14);
+        doc.setFont("helvetica", "bold");
         doc.setTextColor(70, 130, 180); // Blue color
 
-        const contactText =
-            "E-mail: mentenanta@damina.ro ; Telefon: 0743.200.391";
+        let titleText = "";
+        let subtitleText = "";
+
+        if (reportData.templateType === "Administrativ") {
+            titleText =
+                "FIȘA DE LUCRU nr............ din " +
+                (reportData.formattedDate || "");
+            subtitleText = "Lucrări de MENTENANȚĂ";
+        } else if (reportData.templateType === "Caseta") {
+            titleText = "FIȘA DE LUCRU MENTENANȚĂ CASETA";
+            subtitleText = "din " + (reportData.formattedDate || "");
+        } else {
+            titleText = "FIȘA DE LUCRU PENTRU CONSTRUCȚII INDUSTRIALE";
+            subtitleText = "Nr ..... din " + (reportData.formattedDate || "");
+        }
+
+        // Center the title with proper width calculation
         const pageWidth = doc.internal.pageSize.getWidth();
-        const contactWidth = doc.getTextWidth(contactText);
-        const contactX = pageWidth - contactWidth - 20; // Right-aligned with margin
-        doc.text(contactText, contactX, 18);
 
-        // Decorative line under header
-        doc.setDrawColor(180, 180, 180);
-        doc.setLineWidth(0.8);
-        doc.line(20, 28, 190, 28);
+        // Split long titles into multiple lines if needed
+        const maxWidth = 150; // Maximum width for title
+        let titleLines = [];
 
-        // Reset text color for content
+        if (doc.getTextWidth(titleText) > maxWidth) {
+            // Split title into multiple lines
+            titleLines = doc.splitTextToSize(titleText, maxWidth);
+        } else {
+            titleLines = [titleText];
+        }
+
+        // Draw each line of the title centered
+        titleLines.forEach((line, index) => {
+            const lineWidth = doc.getTextWidth(line);
+            const lineX = (pageWidth - lineWidth) / 2;
+            doc.text(line, lineX, yPosition + index * 8);
+        });
+
+        yPosition += titleLines.length * 8 + 5;
+
+        // Subtitle
+        doc.setFontSize(12);
+        doc.setFont("helvetica", "normal");
+        const subtitleWidth = doc.getTextWidth(subtitleText);
+        const subtitleX = (pageWidth - subtitleWidth) / 2;
+        doc.text(subtitleText, subtitleX, yPosition);
+
+        // Reset color for content
         doc.setTextColor(0, 0, 0);
-        yPosition = 40;
+        yPosition += 15;
 
         // Content fields
         doc.setFontSize(11);
@@ -184,7 +189,7 @@ export default async function handler(req, res) {
         yPosition += 8;
 
         doc.setFont("helvetica", "normal");
-        const maxWidth = 170;
+        maxWidth = 170;
         const description = reportData.descriereActivitate || "";
 
         // Split text properly
@@ -197,13 +202,34 @@ export default async function handler(req, res) {
 
         yPosition += 10;
 
-        // Completion status - only show if data is present (for interventions)
+        // Completion status - show actual data from Airtable
         if (
             reportData.lucrareFinalizata ||
             reportData.tipActivitateRoman === "Corectiv"
         ) {
             doc.setFont("helvetica", "bold");
-            doc.text("Lucrare finalizata: DA NU", 20, yPosition);
+
+            // Get the actual value from Airtable
+            let completionStatus = "";
+            if (reportData.lucrareFinalizata) {
+                if (
+                    reportData.lucrareFinalizata.toLowerCase() === "da" ||
+                    reportData.lucrareFinalizata.toLowerCase() === "yes"
+                ) {
+                    completionStatus = "DA";
+                } else if (
+                    reportData.lucrareFinalizata.toLowerCase() === "nu" ||
+                    reportData.lucrareFinalizata.toLowerCase() === "no"
+                ) {
+                    completionStatus = "NU";
+                } else {
+                    completionStatus = reportData.lucrareFinalizata; // Use as-is if not DA/NU
+                }
+            } else {
+                completionStatus = "DA NU"; // Show both options if no data
+            }
+
+            doc.text("Lucrare finalizata: " + completionStatus, 20, yPosition);
             yPosition += 20;
         } else {
             yPosition += 10; // Just add some space if not showing
@@ -286,24 +312,21 @@ export default async function handler(req, res) {
             doc.text(dateText, 130, yPosition);
         }
 
-        // Add footer with contract information
+        // Add footer with contract information (without contact details)
         yPosition += 20;
 
-        // Contract footer based on type
+        // Contract footer based on type (simplified)
         doc.setFontSize(10);
-        doc.setFont("helvetica", "normal");
+        doc.setFont("helvetica", "italic");
         doc.setTextColor(70, 130, 180); // Blue color like header
 
         let footerText = "";
         if (reportData.templateType === "Administrativ") {
-            footerText =
-                "Contract de mentenanta - Lucrari administrative | E-mail: mentenanta@damina.ro | Tel: 0743.200.391";
+            footerText = "Contract de mentenanță - Lucrări administrative";
         } else if (reportData.templateType === "Industrial") {
-            footerText =
-                "Contract constructii industriale | E-mail: mentenanta@damina.ro | Tel: 0743.200.391";
+            footerText = "Contract construcții industriale";
         } else {
-            footerText =
-                "Contract mentenanta caseta | E-mail: mentenanta@damina.ro | Tel: 0743.200.391";
+            footerText = "Contract mentenanță caseta";
         }
 
         const footerWidth = doc.getTextWidth(footerText);
