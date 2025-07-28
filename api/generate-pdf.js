@@ -93,16 +93,18 @@ export default async function handler(req, res) {
             format: "a4",
         });
 
-        // Alternative approach with actual image loading
+        // Header section with logo and contact info
+        let yPosition = 15;
+
         try {
             const fs = await import("fs");
             const path = await import("path");
 
-            // Read logo file
+            // Try to load actual logo
             const logoPath = path.join(
                 process.cwd(),
                 "public",
-                "damina-logo.png"
+                "LOGO-damina.jpg"
             );
             const logoBuffer = fs.readFileSync(logoPath);
             const logoBase64 = logoBuffer.toString("base64");
@@ -112,62 +114,42 @@ export default async function handler(req, res) {
                 `data:image/png;base64,${logoBase64}`,
                 "PNG",
                 20,
-                10,
-                50,
-                20
+                8,
+                40,
+                15
             );
         } catch (error) {
             console.log("Could not load logo, using styled placeholder");
-            // Use the styled placeholder from above
+            // Professional styled placeholder
+            doc.setFillColor(70, 130, 180);
+            doc.rect(20, 8, 40, 15, "F");
+            doc.setFontSize(9);
+            doc.setFont("helvetica", "bold");
+            doc.setTextColor(255, 255, 255);
+            doc.text("DAMINA", 23, 14);
+            doc.text("SOLUTIONS", 23, 19);
         }
 
-        // Set initial position
-        let yPosition = 30;
-
-        // Add top line
-        doc.setDrawColor(0, 0, 0);
-        doc.setLineWidth(0.5);
-        doc.line(20, 20, 190, 20);
-
-        // Title section with blue styling like screenshot
-        doc.setFontSize(16);
-        doc.setFont("helvetica", "bold");
+        // Contact information in header (right side)
+        doc.setFontSize(11);
+        doc.setFont("helvetica", "normal");
         doc.setTextColor(70, 130, 180); // Blue color
 
-        let titleText = "";
-        let subtitleText = "";
-
-        if (reportData.templateType === "Administrativ") {
-            titleText =
-                "FIȘA DE LUCRU nr............ din " +
-                (reportData.formattedDate || "");
-            subtitleText = "Lucrari de MENTENANTA";
-        } else if (reportData.templateType === "Caseta") {
-            titleText = "FIȘA DE LUCRU MENTENANTA CASETA";
-            subtitleText = "din " + (reportData.formattedDate || "");
-        } else {
-            titleText = "FIȘA DE LUCRU PENTRU CONSTRUCTII INDUSTRIALE";
-            subtitleText = "Nr ..... din " + (reportData.formattedDate || "");
-        }
-
-        // Center the title
+        const contactText =
+            "E-mail: mentenanta@damina.ro ; Telefon: 0743.200.391";
         const pageWidth = doc.internal.pageSize.getWidth();
-        const titleWidth = doc.getTextWidth(titleText);
-        const titleX = (pageWidth - titleWidth) / 2;
+        const contactWidth = doc.getTextWidth(contactText);
+        const contactX = pageWidth - contactWidth - 20; // Right-aligned with margin
+        doc.text(contactText, contactX, 18);
 
-        doc.text(titleText, titleX, yPosition);
-        yPosition += 10;
+        // Decorative line under header
+        doc.setDrawColor(180, 180, 180);
+        doc.setLineWidth(0.8);
+        doc.line(20, 28, 190, 28);
 
-        // Subtitle
-        doc.setFontSize(14);
-        doc.setFont("helvetica", "normal");
-        const subtitleWidth = doc.getTextWidth(subtitleText);
-        const subtitleX = (pageWidth - subtitleWidth) / 2;
-        doc.text(subtitleText, subtitleX, yPosition);
-
-        // Reset color for content
+        // Reset text color for content
         doc.setTextColor(0, 0, 0);
-        yPosition += 20;
+        yPosition = 40;
 
         // Content fields
         doc.setFontSize(11);
