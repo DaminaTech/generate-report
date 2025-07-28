@@ -1,16 +1,10 @@
 {
   "name": "pdf-generator",
   "version": "1.0.0",
-  "description": "PDF generation service using Puppeteer",
-  "main": "api/generate-pdf.js",
-  "scripts": {
-    "dev": "vercel dev",
-    "build": "echo 'No build needed'",
-    "start": "echo 'Use vercel dev for local development'"
-  },
+  "description": "PDF generation service",
   "dependencies": {
-    "puppeteer-core": "^21.0.0",
-    "@sparticuz/chromium": "^119.0.0"
+    "jspdf": "^2.5.1",
+    "html2canvas": "^1.4.1"
   },
   "engines": {
     "node": ">=18"
