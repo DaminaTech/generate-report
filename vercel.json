@@ -1,0 +1,8 @@
+{
+  "functions": {
+    "api/generate-pdf.js": {
+      "maxDuration": 30
+    }
+  },
+  "regions": ["iad1"]
+}
