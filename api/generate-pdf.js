@@ -124,10 +124,8 @@ export default async function handler(req, res) {
         doc.setFont("helvetica", "bold");
         doc.setTextColor(70, 130, 180);
         
-        let mainTitle = "FIȘA DE LUCRU";
-        let titleWidth = doc.getTextWidth(mainTitle);
-        let titleX = (pageWidth - titleWidth) / 2;
-        doc.text(mainTitle, titleX, yPosition);
+        let mainTitle = "FISA DE LUCRU";
+        doc.text(mainTitle, 105, yPosition, { align: 'center' });
         
         yPosition += 8;
         
@@ -137,16 +135,14 @@ export default async function handler(req, res) {
         
         let subtitle = "";
         if (reportData.templateType === "Administrativ") {
-            subtitle = "nr............ din " + (reportData.formattedDate || "") + " - Lucrări de MENTENANȚĂ";
+            subtitle = "nr............ din " + (reportData.formattedDate || "") + " - Lucrari de MENTENANTA";
         } else if (reportData.templateType === "Caseta") {
-            subtitle = "MENTENANȚĂ CASETA - din " + (reportData.formattedDate || "");
+            subtitle = "MENTENANTA CASETA - din " + (reportData.formattedDate || "");
         } else {
-            subtitle = "CONSTRUCȚII INDUSTRIALE - Nr ..... din " + (reportData.formattedDate || "");
+            subtitle = "CONSTRUCTII INDUSTRIALE - Nr ..... din " + (reportData.formattedDate || "");
         }
         
-        let subtitleWidth = doc.getTextWidth(subtitle);
-        let subtitleX = (pageWidth - subtitleWidth) / 2;
-        doc.text(subtitle, subtitleX, yPosition);
+        doc.text(subtitle, 105, yPosition, { align: 'center' });
         
         yPosition += 15;
         
