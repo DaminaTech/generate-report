@@ -1,8 +1,8 @@
 // api/generate-pdf.js
-// Ultra-simple version without Puppeteer for now
+// Fixed version that properly handles the HTML content
 
 export default async function handler(req, res) {
-    console.log("🚀 Function called");
+    console.log("🚀 PDF generation function called");
 
     // CORS headers
     res.setHeader("Access-Control-Allow-Origin", "*");
@@ -25,61 +25,130 @@ export default async function handler(req, res) {
     }
 
     try {
-        console.log("📨 POST request received");
-        console.log("Headers:", JSON.stringify(req.headers));
+        console.log("📨 Processing POST request");
+        console.log("Content-Type:", req.headers["content-type"]);
         console.log("Body type:", typeof req.body);
-        console.log("Body:", req.body);
 
-        // Parse request body
-        let requestData;
+        // Parse request body properly
+        let requestData = {};
 
-        if (typeof req.body === "string") {
-            requestData = JSON.parse(req.body);
-        } else {
-            requestData = req.body || {};
+        if (req.body) {
+            if (typeof req.body === "string") {
+                try {
+                    requestData = JSON.parse(req.body);
+                } catch (e) {
+                    console.error("Failed to parse JSON:", e);
+                    requestData = { html: req.body }; // Treat as raw HTML
+                }
+            } else if (typeof req.body === "object") {
+                requestData = req.body;
+            }
         }
 
-        const {
-            html = "<html><body><h1>No HTML provided</h1></body></html>",
-            options = {},
-        } = requestData;
+        console.log("📋 Request data keys:", Object.keys(requestData));
+
+        const { html, options = {} } = requestData;
+
+        if (!html || html.trim() === "") {
+            console.error("❌ No HTML content provided");
+            return res.status(400).json({ error: "HTML content is required" });
+        }
 
         console.log("✅ HTML received, length:", html.length);
-
-        // For now, create a simple text response instead of PDF
-        // This eliminates Puppeteer as the source of errors
-
-        const textContent = `
-CONSTRUCTION WORK REPORT
-========================
-
-Generated: ${new Date().toISOString()}
-HTML Content Length: ${html.length} characters
-
-Raw HTML (first 500 chars):
-${html.substring(0, 500)}
-
-Options: ${JSON.stringify(options, null, 2)}
-
-This is a temporary text version while we debug the PDF generation.
-    `;
-
-        // Return as plain text for now
-        res.setHeader("Content-Type", "text/plain");
-        res.setHeader(
-            "Content-Disposition",
-            'attachment; filename="report.txt"'
+        console.log(
+            "📄 HTML preview (first 200 chars):",
+            html.substring(0, 200)
         );
 
-        return res.status(200).send(textContent);
+        try {
+            // Import Puppeteer
+            const puppeteer = await import("puppeteer-core");
+            const chromium = await import("@sparticuz/chromium");
+
+            console.log("📦 Puppeteer imported successfully");
+
+            // Launch browser
+            const browser = await puppeteer.default.launch({
+                args: [
+                    ...chromium.default.args,
+                    "--hide-scrollbars",
+                    "--disable-web-security",
+                ],
+                defaultViewport: chromium.default.defaultViewport,
+                executablePath: await chromium.default.executablePath(),
+                headless: chromium.default.headless,
+                ignoreHTTPSErrors: true,
+            });
+
+            console.log("🌐 Browser launched");
+
+            const page = await browser.newPage();
+
+            // Set HTML content
+            await page.setContent(html, {
+                waitUntil: "domcontentloaded",
+                timeout: 30000,
+            });
+
+            console.log("📄 HTML content set in browser");
+
+            // PDF options
+            const pdfOptions = {
+                format: options.format || "A4",
+                margin: options.margin || {
+                    top: "20mm",
+                    bottom: "20mm",
+                    left: "15mm",
+                    right: "15mm",
+                },
+                printBackground: true,
+                preferCSSPageSize: true,
+            };
+
+            console.log("🖨️ Generating PDF with options:", pdfOptions);
+
+            // Generate PDF
+            const pdfBuffer = await page.pdf(pdfOptions);
+
+            await browser.close();
+
+            console.log(
+                "✅ PDF generated successfully, size:",
+                pdfBuffer.length,
+                "bytes"
+            );
+
+            // Return PDF
+            res.setHeader("Content-Type", "application/pdf");
+            res.setHeader("Content-Length", pdfBuffer.length);
+            res.setHeader(
+                "Content-Disposition",
+                'attachment; filename="construction-report.pdf"'
+            );
+
+            return res.status(200).send(pdfBuffer);
+        } catch (puppeteerError) {
+            console.error("❌ Puppeteer error:", puppeteerError);
+
+            // Fallback: Return HTML as downloadable file
+            console.log("📄 Falling back to HTML file");
+
+            res.setHeader("Content-Type", "text/html; charset=utf-8");
+            res.setHeader(
+                "Content-Disposition",
+                'attachment; filename="construction-report.html"'
+            );
+
+            return res.status(200).send(html);
+        }
     } catch (error) {
-        console.error("❌ Error in function:", error);
+        console.error("❌ General error:", error);
         console.error("Error stack:", error.stack);
 
         return res.status(500).json({
-            error: "Function error",
+            error: "PDF generation failed",
             message: error.message,
-            stack: error.stack,
+            details: error.stack,
         });
     }
 }
