@@ -102,14 +102,14 @@ export default async function handler(req, res) {
         doc.setFontSize(16);
         doc.setFont("helvetica", "bold");
         doc.setTextColor(70, 130, 180); // Blue color
-        doc.text("DAMINA SOLUTIONS", 20, 15);
+        doc.text("DAMINA SOLUTIONS S.R.L.", 20, 15);
 
         // Contact information in header
         doc.setFontSize(9);
         doc.setFont("helvetica", "normal");
         doc.setTextColor(0, 0, 0); // Black color
-        doc.text("Email: office@damina-solutions.ro", 20, 22);
-        doc.text("Tel: +40 123 456 789", pageWidth - 60, 22);
+        doc.text("Email: mentenanta@damina.ro", 20, 22);
+        doc.text("Tel: +40 734 283 500", pageWidth - 60, 22);
 
         // Set initial position
         let yPosition = 35;
@@ -123,29 +123,35 @@ export default async function handler(req, res) {
         doc.setFontSize(14);
         doc.setFont("helvetica", "bold");
         doc.setTextColor(70, 130, 180);
-        
+
         let mainTitle = "FISA DE LUCRU";
-        doc.text(mainTitle, 105, yPosition, { align: 'center' });
-        
+        doc.text(mainTitle, 105, yPosition, { align: "center" });
+
         yPosition += 8;
-        
+
         // Subtitle with date and type info
         doc.setFontSize(11);
         doc.setFont("helvetica", "normal");
-        
+
         let subtitle = "";
         if (reportData.templateType === "Administrativ") {
-            subtitle = "nr............ din " + (reportData.formattedDate || "") + " - Lucrari de MENTENANTA";
+            subtitle =
+                "nr............ din " +
+                (reportData.formattedDate || "") +
+                " - Lucrari de MENTENANTA";
         } else if (reportData.templateType === "Caseta") {
-            subtitle = "MENTENANTA CASETA - din " + (reportData.formattedDate || "");
+            subtitle =
+                "MENTENANTA CASETA - din " + (reportData.formattedDate || "");
         } else {
-            subtitle = "CONSTRUCTII INDUSTRIALE - Nr ..... din " + (reportData.formattedDate || "");
+            subtitle =
+                "CONSTRUCTII INDUSTRIALE - Nr ..... din " +
+                (reportData.formattedDate || "");
         }
-        
-        doc.text(subtitle, 105, yPosition, { align: 'center' });
-        
+
+        doc.text(subtitle, 105, yPosition, { align: "center" });
+
         yPosition += 15;
-        
+
         // Reset color for content
         doc.setTextColor(0, 0, 0);
 
@@ -305,37 +311,23 @@ export default async function handler(req, res) {
             doc.text(dateText, 130, yPosition);
         }
 
-        // Add footer with contract information (without contact details)
-        const footerY = pageHeight - 20; // Position footer 20mm from bottom
+        // Add footer with standard text
+        const footerY = pageHeight - 25; // Position footer 25mm from bottom
 
-        // Contract footer based on type (simplified)
+        // Standard footer for all contracts
         doc.setFontSize(9);
-        doc.setFont("helvetica", "italic");
-        doc.setTextColor(70, 130, 180); // Blue color like header
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(0, 0, 0); // Black color
 
-        let footerText = "";
-        if (reportData.templateType === "Administrativ") {
-            footerText = "Contract de mentenanță - Lucrări administrative";
-        } else if (reportData.templateType === "Industrial") {
-            footerText = "Contract construcții industriale";
-        } else {
-            footerText = "Contract mentenanță caseta";
-        }
+        // Footer text on two lines
+        const footerLine1 = "Datele din aceasta fisa, corespund cu situatia din teren";
+        const footerLine2 = "S.C. Damina Solutions SRL";
 
-        // Ensure footer text fits within page margins
-        const footerMaxWidth = pageWidth - 40; // 20mm margin on each side
-        const footerLines = doc.splitTextToSize(footerText, footerMaxWidth);
-
-        // Center each line of footer
-        footerLines.forEach((line, index) => {
-            const lineWidth = doc.getTextWidth(line);
-            const lineX = (pageWidth - lineWidth) / 2;
-            doc.text(
-                line,
-                lineX,
-                footerY - (footerLines.length - 1 - index) * 4
-            );
-        });
+        // Center first line
+        doc.text(footerLine1, 105, footerY, { align: "center" });
+        
+        // Center second line
+        doc.text(footerLine2, 105, footerY + 5, { align: "center" });
 
         // Generate PDF buffer
         const pdfArrayBuffer = doc.output("arraybuffer");
